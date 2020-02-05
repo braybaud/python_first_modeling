@@ -1,0 +1,13 @@
+python -m pip install dtk-generic-intrahost --index-url=https://cwiswell@idmod.org:@packages.idmod.org/api/pypi/idm-pypi-staging/simple
+
+User for packages.idmod.org: cwiswell@idmod.org
+
+python -m pip install dtk-nodedemog --index-url=https://cwiswell@idmod.org:@packages.idmod.org/api/pypi/idm-pypi-staging/simple
+Looking in indexes: https://cwiswell%40idmod.org:****@packages.idmod.org/api/pypi/idm-pypi-staging/simple
+User for packages.idmod.org: cwiswell@idmod.org
+Password:
+Collecting dtk-nodedemog
+  Downloading https://packages.idmod.org/api/pypi/idm-pypi-staging/dtk_nodedemog/0.0.11/dtk_nodedemog-0.0.11-cp36-cp36m-win_amd64.whl (390kB)
+     || 399kB 2.2MB/s
+Installing collected packages: dtk-nodedemog
+Successfully installed dtk-nodedemog-0.0.11
