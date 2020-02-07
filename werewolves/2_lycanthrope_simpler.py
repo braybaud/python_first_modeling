@@ -81,21 +81,6 @@ class WerewolfDemo(object):
     def create_person_callback(self, mcw, age, gender):
         self.humans.append(dgi.create((gender, age, mcw)))
 
-
-    def define_population(self, population_count, age_gaussian_mean=20, age_gaussian_sigma=7, probability_male=0.5):
-        with open("demo_template.json") as infile:
-            demog = json.load(infile)
-            pass
-        demog["Nodes"][0]["NodeAttributes"]["InitialPopulation"] = population_count
-        demog["Nodes"][0]["IndividualAttributes"]["AgeDistribution1"] = age_gaussian_mean * DAYS_YEAR
-        demog["Nodes"][0]["IndividualAttributes"]["AgeDistribution2"] = age_gaussian_sigma * DAYS_YEAR
-
-        with open("demographics.json","w") as outfile:
-            json.dump(demog, outfile, indent=4, sort_keys=True)
-            pass
-        pass
-
-
     def expose_lycanthrope(self):
         deaths_today = 0
         future_wolves = []
@@ -217,7 +202,6 @@ class DtkPerson(object):
 if __name__ == "__main__":
     demo = WerewolfDemo(debug=False, enable_reporting=True)
     demo.debug = False
-    demo.define_population(1000)
     dnd.set_callback(demo.create_person_callback)
     dnd.populate_from_files()
     if demo.debug:
