@@ -1,0 +1,22 @@
+{
+    "Metadata": {
+        "IdReference": "Gridded world grump2.5arcmin"
+    },
+    "Nodes": [
+        {
+            "IndividualAttributes": {
+                "AgeDistribution1": 1825,
+                "AgeDistribution2": 10950,
+                "AgeDistributionFlag": 1,
+                "RiskDistribution1": 1,
+                "RiskDistribution2": 0,
+                "RiskDistributionFlag": 0
+            },
+            "NodeAttributes": {
+                "BirthRate": 5.48e-05,
+                "InitialPopulation": 1000
+            },
+            "NodeID": 1
+        }
+    ]
+}
