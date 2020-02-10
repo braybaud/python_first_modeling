@@ -17,33 +17,6 @@ import numpy as np
 
 
 class WerewolfDemo(object):
-    class WaitingQueue(list):
-        def __init__(self, wait_length_days=40):
-            my_queue = []
-            for x in range(wait_length_days):
-                my_queue.append([])
-                pass
-            self.queue = my_queue
-            pass
-
-
-        def enqueue(self, person_list):
-            self.queue.append(person_list)
-            pass
-
-        def dequeue(self):
-            # TODO: handle zero length queue
-            return_list = self.queue[0]
-            self.queue.remove(return_list)
-            return return_list
-
-        def count_queue(self):
-            total = 0
-            for x in self.queue:
-                total += len(x)
-                pass
-            return total
-
     def __init__(self,
                  config_filename="werewolf_config.json",
                  feed_kill_ratio=0.75,
@@ -52,7 +25,6 @@ class WerewolfDemo(object):
         with open(config_filename) as infile:
             file_parameters = json.load(infile)['parameters']
         params = {}
-        params['waiting_queue'] = file_parameters['wolf_waiting_period']
         params['feed_death_probability'] = file_parameters['feed_death_probability']
         params['enable_reporting'] = file_parameters['enable_reporting']
         params['debug'] = file_parameters['debug']
@@ -62,7 +34,7 @@ class WerewolfDemo(object):
         self.wounded_count = 0
         self.death_queue = deque([])
         self.werewolves = []
-        self.waiting_wolves = self.WaitingQueue(params['waiting_queue'])
+        self.waiting_wolves = []
         self.graves = []
         self.feed_death_probability = feed_kill_ratio
         self.debug = self.parameters['debug']
@@ -81,21 +53,6 @@ class WerewolfDemo(object):
     def create_person_callback(self, mcw, age, gender):
         self.humans.append(dgi.create((gender, age, mcw)))
 
-
-    def define_population(self, population_count, age_gaussian_mean=20, age_gaussian_sigma=7, probability_male=0.5):
-        with open("demo_template.json") as infile:
-            demog = json.load(infile)
-            pass
-        demog["Nodes"][0]["NodeAttributes"]["InitialPopulation"] = population_count
-        demog["Nodes"][0]["IndividualAttributes"]["AgeDistribution1"] = age_gaussian_mean * DAYS_YEAR
-        demog["Nodes"][0]["IndividualAttributes"]["AgeDistribution2"] = age_gaussian_sigma * DAYS_YEAR
-
-        with open("demographics.json","w") as outfile:
-            json.dump(demog, outfile, indent=4, sort_keys=True)
-            pass
-        pass
-
-
     def expose_lycanthrope(self):
         deaths_today = 0
         future_wolves = []
@@ -111,9 +68,11 @@ class WerewolfDemo(object):
                 print(f'With {len(self.werewolves)} werewolves, {feeds} feeds.')
             for n in range(feeds):
                 victim = random.choice(self.humans)
-                self.humans.remove(victim)
                 draw = random.random()
                 if draw < self.feed_death_probability:
+                    self.humans.remove(victim)
+                    if victim in self.waiting_wolves:
+                        self.waiting_wolves.remove(victim) # Possible to be bitten twice
                     self.graves.append(victim)
                     if self.debug:
                         print("Someone died mysteriously...")
@@ -129,14 +88,24 @@ class WerewolfDemo(object):
                     self.terminate_report()
                     pass
                 pass
-        self.waiting_wolves.enqueue(future_wolves)
+            pass
+        for puppy in future_wolves:
+            dgi.force_infect(puppy) # Should start incubating
+            self.waiting_wolves.append(puppy) # Copying them to waiting wolves for reporting
         self.death_queue.append(deaths_today)
-        return self.waiting_wolves.dequeue()
 
     def update(self):
         self.time += 1
         for h in self.humans:
             dgi.update(h)
+            # Pull people who've changed out of human and into werewolves
+            if dgi.is_infected(h) and not dgi.is_incubating(h):
+                self.humans.remove(h)
+                self.waiting_wolves.remove(h) # See above, they are in two places and need to be removed
+                self.werewolves.append(h)
+                if self.debug:
+                    print(f"Individual {h} is a wolf!")
+
         if self.time % HALLOWEEN_DAY == 0: # It is october 31
             if len(self.werewolves) == 0: # and there are no werewolves
                 found_one = False
@@ -176,9 +145,10 @@ class WerewolfDemo(object):
 
     def report_step(self):
         self.report["timestep"].append(self.time)
-        self.report["humans"].append(len(self.humans))
+        # TODO: counting humans minus incubating. Not sure what happens if incubating is bitten.
+        self.report["humans"].append(len(self.humans) - len(self.waiting_wolves))
         self.report["werewolves"].append(len(self.werewolves))
-        self.report["waiting_wolves"].append(self.waiting_wolves.count_queue())
+        self.report["waiting_wolves"].append(len(self.waiting_wolves))
         self.report["graves"].append(len(self.graves))
 
     def terminate_report(self):
@@ -217,7 +187,6 @@ class DtkPerson(object):
 if __name__ == "__main__":
     demo = WerewolfDemo(debug=False, enable_reporting=True)
     demo.debug = False
-    demo.define_population(1000)
     dnd.set_callback(demo.create_person_callback)
     dnd.populate_from_files()
     if demo.debug:
@@ -245,13 +214,9 @@ if __name__ == "__main__":
         sys.exit(0)
     for n in range(20*DAYS_YEAR):
         demo.update()
-        new_wolves = demo.expose_lycanthrope()
-        for puppy in new_wolves:
-            demo.werewolves.append(puppy) # TODO: This feels dumb
-            if demo.debug:
-                print(f"Individual {puppy} is a wolf!")
+        demo.expose_lycanthrope()
         if n % 30 == 0:
-            print(f"Humans: {len(demo.humans)}\tWerewolves: {len(demo.werewolves)}\tGraveyard: {len(demo.graves)}\tHealing: {demo.waiting_wolves.count_queue()}\n")
+            print(f"Humans: {len(demo.humans) - len(demo.waiting_wolves)}\tWerewolves: {len(demo.werewolves)}\tGraveyard: {len(demo.graves)}\tHealing: {len(demo.waiting_wolves)}\n")
         if n % 365 == 0:
             print("Happy new year!")
             foo = input("Ready for next year?")
@@ -259,8 +224,9 @@ if __name__ == "__main__":
             print("Happy Halloween!")
     demo.terminate_report()
 
-# Move to using intrahost: Incubation for 'waiting werewolves' and infectiousness for hunger
-# Move to using node demographics to create population
+# DONE: Move to using intrahost: Incubation for 'waiting werewolves'
+# TODO: use infectiousness for hunger
+# DONE: Move to using node demographics to create population
 # Move to / consider moving to using node demographics for fertility / mortality
 # Consider moving to individual properties for hunters- except IPs should not affect model behavior...
 # Consider using diagnostic intervention for 'werewolf test?"
