@@ -1,0 +1,18 @@
+1_lycanthrope: 
++ Werewolves
++ + Transmission only during full moon
++ + Outbreaks on Halloween
++ Queue for "turning"
++ Artisnal age structure
++ + Gaussian parameters as method parameters
++ + Hand-forged age distribution
+
+2_lycanthrope:
+- Artisnal age structure
++ Age parameters written to demographic file
++ dtk_node_demog builds the population
+
+2_lycanthrope_simpler:
+- Age parameters
++ Supports other distributions (should, anyway)
+
