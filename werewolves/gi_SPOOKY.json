@@ -1,9 +1,9 @@
 {
-    "Incubation_Period_Distribution": "CONSTANT_DISTRIBUTION",
+    "Incubation_Period_Distribution": "GAUSSIAN_DISTRIBUTION",
     "Migration_Model": "NO_MIGRATION",
-    "SPOOKY_Incubation_Period_Distribution": "GAUSSIAN_DISTRIBUTION",
-    "SPOOKY_Incubation_Period_Gaussian_Mean": 30,
-    "SPOOKY_Incubation_Period_Gaussian_Std_Dev": 5,
-    "SPOOKY_Infectious_Period_Distribution": "CONSTANT_DISTRIBUTION",
-    "SPOOKY_Infectious_Period_Constant": 10000
+    "Incubation_Period_Gaussian_Mean": 30,
+    "Incubation_Period_Gaussian_Std_Dev": 5,
+    "Infectious_Period_Distribution": "CONSTANT_DISTRIBUTION",
+    "Infectious_Period_Constant": 10000,
+    "Simulation_Type": "GENERIC_SIM"
 }

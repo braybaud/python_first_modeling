@@ -1,5 +1,4 @@
 import dtk_generic_intrahost as dgi
-import dtk_nodedemog as dnd
 
 
 people = []
@@ -10,11 +9,13 @@ for x in range(100):
     person = dgi.create((sex, 7300, 1.0))
     people.append(person)
     pass
-
+print("Created people.")
 # Now, touch each one with an infection before we spin time
 for victim in people:
     dgi.force_infect(victim)
     pass
+
+print("Forced infections.")
 
 for x in range(25):
     for person in people:
