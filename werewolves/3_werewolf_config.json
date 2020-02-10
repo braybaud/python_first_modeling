@@ -1,0 +1,7 @@
+{
+    "parameters": {
+        "feed_death_probability": 0.9,
+        "enable_reporting": 1,
+        "debug": 0
+    }
+}

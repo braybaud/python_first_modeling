@@ -90,6 +90,7 @@ class WerewolfDemo(object):
                 current_sex = 1
                 pass
             current_age = int(np.random.normal(loc=age_gaussian_mean, scale=age_gaussian_sigma) * DAYS_YEAR)
+            # TODO: It would be nice if I didn't have to talk to numpy here
             human = dgi.create((current_sex, current_age, monte_carlo_weight))
             self.humans.append(human)
             total_population += 1
@@ -242,7 +243,7 @@ if __name__ == "__main__":
         demo.update()
         new_wolves = demo.expose_lycanthrope()
         for puppy in new_wolves:
-            demo.werewolves.append(puppy)
+            demo.werewolves.append(puppy) # TODO: This feels dumb
             if demo.debug:
                 print(f"Individual {puppy} is a wolf!")
         if n % 30 == 0:

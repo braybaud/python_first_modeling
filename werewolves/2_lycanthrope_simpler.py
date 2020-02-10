@@ -244,7 +244,7 @@ if __name__ == "__main__":
     demo.terminate_report()
 
 # Move to using intrahost: Incubation for 'waiting werewolves' and infectiousness for hunger
-# Move to using node demographics to create population
+# DONE: Move to using node demographics to create population
 # Move to / consider moving to using node demographics for fertility / mortality
 # Consider moving to individual properties for hunters- except IPs should not affect model behavior...
 # Consider using diagnostic intervention for 'werewolf test?"

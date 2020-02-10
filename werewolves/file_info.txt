@@ -3,6 +3,13 @@
 + + Transmission only during full moon
 + + Outbreaks on Halloween
 + Queue for "turning"
++ + initializes to a hard-coded list of days
++ + FIFO push / pop
++ + BUGBUG: What happens if that list is zero? Don't know
++ + count_queue method to get "total waiting" for report
++ + demo.expose() pushes into queue in batches
++ + demo.expose() pops off of queue in batches, returns to caller
++ + caller has to remember to put new wolves into werewolf list or lose them
 + Artisnal age structure
 + + Gaussian parameters as method parameters
 + + Hand-forged age distribution
@@ -16,4 +23,12 @@
 - Age parameters
 + Supports other distributions 
 + + see demographics_uniform for a different example
+
+3_lycanthrope:
+- Queue for "turning"
+- 'wolf_waiting_period' from werewolf_config
++ Incubation parameters from gi_SPOOKY.json
++- Make state of people the model's responsibility, not the caller's
++ Length of "waiting" now just a length, don't need a method call
+
 
