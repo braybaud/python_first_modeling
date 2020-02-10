@@ -14,5 +14,6 @@
 
 2_lycanthrope_simpler:
 - Age parameters
-+ Supports other distributions (should, anyway)
++ Supports other distributions 
++ + see demographics_uniform for a different example
 
