@@ -12,18 +12,6 @@ from werewolves.utils import DtkPerson, load_constants, logger, MONTHS, Populati
 DAYS_YEAR, HALLOWEEN_DAY, LUNAR_CYCLE, FULL_MOON_NIGHTS, MIN_WEREWOLF_SPAWN = load_constants()
 
 
-def define_population(population_count, age_gaussian_mean=20, age_gaussian_sigma=7):
-    with open("demo_template.json") as infile:
-        demog = json.load(infile)
-
-    demog["Nodes"][0]["NodeAttributes"]["InitialPopulation"] = population_count
-    demog["Nodes"][0]["IndividualAttributes"]["AgeDistribution1"] = age_gaussian_mean * DAYS_YEAR
-    demog["Nodes"][0]["IndividualAttributes"]["AgeDistribution2"] = age_gaussian_sigma * DAYS_YEAR
-
-    with open("demographics.json", "w") as outfile:
-        json.dump(demog, outfile, indent=4, sort_keys=True)
-
-
 class WerewolfDemo:
     def __init__(self,
                  config_filename="werewolf_config.json",
@@ -89,7 +77,7 @@ class WerewolfDemo:
 
     def expose_lycanthrope(self):
         future_wolves = []
-        current_werewolves =  self.humans.count_state(State.infected)
+        current_werewolves = self.humans.count_state(State.infected)
         if (self.time % LUNAR_CYCLE) < FULL_MOON_NIGHTS:
             logger.debug("Full moon today!")
             feeds = 0
