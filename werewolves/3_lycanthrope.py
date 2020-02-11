@@ -85,7 +85,7 @@ class WerewolfDemo:
             future_wolf = potential_wolves[0]
 
         # Infect it immediately (no incubation)
-        self.humans.set_state_for_human(future_wolf, State.infected)
+        future_wolf.state = State.infected
         logger.debug(f"Turned human {future_wolf.id} into a werewolf!")
 
     def expose_lycanthrope(self):
@@ -110,7 +110,7 @@ class WerewolfDemo:
                 draw = random.random()
                 if draw < self.feed_death_probability:
                     # The victim died
-                    self.humans.set_state_for_human(victim, State.dead)
+                    victim.state = State.dead
                     logger.debug("Someone died mysteriously...")
                 else:
                     # The victim survived -> it will become a wolf
@@ -126,8 +126,8 @@ class WerewolfDemo:
 
         for puppy in future_wolves:
             # Start incubating in DTK
-            dgi.force_infect(puppy.id)
-            self.humans.set_state_for_human(puppy, State.incubating)
+            # dgi.force_infect(puppy.id)
+            puppy.state = State.incubating
 
     def update(self):
         # Increment the time
@@ -138,7 +138,7 @@ class WerewolfDemo:
             dgi.update(h.id)
 
             if dgi.is_infected(h.id) and not dgi.is_incubating(h.id):
-                self.humans.set_state_for_human(h, State.infected)
+                h.state = State.infected
                 logger.debug(f"Individual {h} is a wolf!")
 
         # If its october 31st and there are no werewolves, turn somebody
