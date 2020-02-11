@@ -94,7 +94,7 @@ class WerewolfDemo:
         # Remove it from the population and add it to the wolves
         self.humans.remove(future_wolf)
         self.werewolves.append(future_wolf)
-        logger.debug(f"Turned human {future_wolf.id} into a werewolf!")
+        logger.debug(f"Turned human {future_wolf} into a werewolf!")
 
     def expose_lycanthrope(self):
         dead_victims_today = []

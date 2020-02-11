@@ -73,7 +73,7 @@ class WerewolfDemo:
 
         # Infect it immediately (no incubation)
         future_wolf.state = State.infected
-        logger.debug(f"Turned human {future_wolf.id} into a werewolf!")
+        logger.debug(f"Turned human {future_wolf} into a werewolf!")
 
     def expose_lycanthrope(self):
         future_wolves = []
