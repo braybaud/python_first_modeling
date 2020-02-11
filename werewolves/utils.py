@@ -105,7 +105,7 @@ class DtkPerson:
         year = int(self.age / 365)
         months = int((self.age % 365) / 30)
         days = (self.age % 365) % 30
-        return f"{year} years, {months} months, {days} days"
+        return f"{year} years, {months} months, {int(days)} days"
 
     def __repr__(self):
         return f"<Individual {self.gender} #{self.id} - age: {self.age}>"
