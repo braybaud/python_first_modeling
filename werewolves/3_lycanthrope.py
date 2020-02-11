@@ -2,12 +2,11 @@ import json
 import logging
 import random
 import sys
-from collections import deque
 
-import dtk_nodedemog as dnd
 import dtk_generic_intrahost as dgi
+import dtk_nodedemog as dnd
 
-from werewolves.utils import load_constants, logger, len_list_of_lists, DtkPerson, Gender, MONTHS, Population, State
+from werewolves.utils import DtkPerson, load_constants, logger, MONTHS, Population, State
 
 # Load the constants
 DAYS_YEAR, HALLOWEEN_DAY, LUNAR_CYCLE, FULL_MOON_NIGHTS, MIN_WEREWOLF_SPAWN = load_constants()
