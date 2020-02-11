@@ -55,9 +55,6 @@ class WerewolfDemo:
                 "graves": []
             }
 
-    def create_person_callback(self, mcw, age, gender):
-        self.humans.append(dgi.create((gender, age, mcw)))
-
     def create_population(self, population_count, age_gaussian_mean=20, age_gaussian_sigma=7, probability_male=0.5):
         monte_carlo_weight = 1.0
         while len(self.humans) < population_count:
@@ -200,6 +197,7 @@ if __name__ == "__main__":
     logger.debug(f'First human age: {demo.humans[0].formatted_age}\tgender:{demo.humans[0].gender.name}')
     logger.debug(f'Final human age: {demo.humans[-1].formatted_age}\tgender:{demo.humans[-1].gender.name}')
     logger.debug(f'Average age: {demo.humans.mean_age}\tStd Dev: {demo.humans.std_age}')
+    print()
 
     # Run for 20 yeats
     for n in range(20 * DAYS_YEAR):

@@ -1,48 +1,58 @@
-# Move to reading constants out of a config file
-
-import dtk_generic_intrahost as dgi
-import dtk_nodedemog as dnd
-from collections import deque
-
-DAYS_YEAR = 365
-HALLOWEEN_DAY = 304
-LUNAR_CYCLE = 28
-FULL_MOON_NIGHTS = 2
-MIN_WEREWOLF_SPAWN = 17
+import json
+import logging
 import random
 import sys
-import json
+from collections import deque
 
-import numpy as np
+import dtk_nodedemog as dnd
+import dtk_generic_intrahost as dgi
+
+from werewolves.utils import load_constants, logger, len_list_of_lists, DtkPerson, Gender, MONTHS, Population, State
+
+# Load the constants
+DAYS_YEAR, HALLOWEEN_DAY, LUNAR_CYCLE, FULL_MOON_NIGHTS, MIN_WEREWOLF_SPAWN = load_constants()
 
 
-class WerewolfDemo(object):
+def define_population(population_count, age_gaussian_mean=20, age_gaussian_sigma=7):
+    with open("demo_template.json") as infile:
+        demog = json.load(infile)
+
+    demog["Nodes"][0]["NodeAttributes"]["InitialPopulation"] = population_count
+    demog["Nodes"][0]["IndividualAttributes"]["AgeDistribution1"] = age_gaussian_mean * DAYS_YEAR
+    demog["Nodes"][0]["IndividualAttributes"]["AgeDistribution2"] = age_gaussian_sigma * DAYS_YEAR
+
+    with open("demographics.json", "w") as outfile:
+        json.dump(demog, outfile, indent=4, sort_keys=True)
+
+
+class WerewolfDemo:
     def __init__(self,
                  config_filename="werewolf_config.json",
                  feed_kill_ratio=0.75,
-                 enable_reporting=False,
-                 debug=False):
-        with open(config_filename) as infile:
+                 enable_reporting=False):
+
+        with open(config_filename, 'r') as infile:
             file_parameters = json.load(infile)['parameters']
-        params = {}
-        params['feed_death_probability'] = file_parameters['feed_death_probability']
-        params['enable_reporting'] = file_parameters['enable_reporting']
-        params['debug'] = file_parameters['debug']
-        self.parameters = params
-        self.humans = []
+
+        self.parameters = {'waiting_queue': file_parameters['wolf_waiting_period'],
+                           'feed_death_probability': file_parameters['feed_death_probability'],
+                           'enable_reporting': file_parameters['enable_reporting'],
+                           'debug': file_parameters['debug']}
+
+        self.humans = Population()
         self.time = 1
-        self.wounded_count = 0
-        self.death_queue = deque([])
-        self.werewolves = []
-        self.waiting_wolves = []
-        self.graves = []
-        self.feed_death_probability = feed_kill_ratio
-        self.debug = self.parameters['debug']
         self.min_age_werewolf_years = 16
         self.enable_reporting = enable_reporting
+        self.feed_death_probability = feed_kill_ratio
+
+        # If we are in debug mode -> show debug messages
+        if self.parameters['debug']:
+            logger.setLevel(logging.DEBUG)
+
+        # If reporting is enabled -> start the reports
         if self.enable_reporting:
             self.report = {
-                "timestep":[],
+                "timestep": [],
                 "humans": [],
                 "waiting_wolves": [],
                 "hunters": [],
@@ -51,182 +61,162 @@ class WerewolfDemo(object):
             }
 
     def create_person_callback(self, mcw, age, gender):
-        self.humans.append(dgi.create((gender, age, mcw)))
+        self.humans.append(DtkPerson(dgi.create((gender, age, mcw))))
+
+    def turn_random_human_in_werewolf(self):
+        # Make sure we select only old enough humans
+        min_age_exposure = self.min_age_werewolf_years * DAYS_YEAR
+        potential_wolves = self.humans.humans_older_than(min_age_exposure, State.healthy)
+
+        # Nobody is old enough -> exit
+        if len(potential_wolves) == 0:
+            logger.error("No one old enough! No outbreak!")
+            logger.error([h.age for h in self.humans])
+            sys.exit()
+
+        # Search for somebody old enough and born on Halloween
+        potential_wolves_halloween = filter(lambda human: human.age % DAYS_YEAR == HALLOWEEN_DAY, potential_wolves)
+
+        try:
+            future_wolf = next(potential_wolves_halloween)
+            logger.info("Found a new werewolf with a Halloween Birthday.")
+        except StopIteration:
+            logger.info("No cool birthdays, just taking someone.")
+            future_wolf = potential_wolves[0]
+
+        # Infect it immediately (no incubation)
+        self.humans.set_state_for_human(future_wolf, State.infected)
+        logger.debug(f"Turned human {future_wolf.id} into a werewolf!")
 
     def expose_lycanthrope(self):
-        deaths_today = 0
         future_wolves = []
-        if ((self.time % LUNAR_CYCLE) < FULL_MOON_NIGHTS):
+        current_werewolves =  self.humans.count_state(State.infected)
+        if (self.time % LUNAR_CYCLE) < FULL_MOON_NIGHTS:
+            logger.debug("Full moon today!")
             feeds = 0
-            if self.werewolves:
-                # set number of feeds
-                feeds = round(len(self.werewolves) / 2)
-                if feeds == 0:
-                    feeds +=1
-                pass
-            if self.debug:
-                print(f'With {len(self.werewolves)} werewolves, {feeds} feeds.')
-            for n in range(feeds):
-                victim = random.choice(self.humans)
+            if current_werewolves != 0:
+                # set number of feeds if we have werewolves.
+                # We want at least one feed
+                feeds = round(current_werewolves / 2) or 1
+
+            logger.debug(f'With {current_werewolves} werewolves, {feeds} feeds.')
+
+            # For each feed, choose the victim
+            for _ in range(feeds):
+                # Choose our victim, then remove it from the population
+                victim = random.choice(self.humans.get_humans_with_state(State.healthy))
+
+                # Check if the victim dies
                 draw = random.random()
                 if draw < self.feed_death_probability:
-                    self.humans.remove(victim)
-                    if victim in self.waiting_wolves:
-                        self.waiting_wolves.remove(victim) # Possible to be bitten twice
-                    self.graves.append(victim)
-                    if self.debug:
-                        print("Someone died mysteriously...")
-                    deaths_today += 1
+                    # The victim died
+                    self.humans.set_state_for_human(victim, State.dead)
+                    logger.debug("Someone died mysteriously...")
                 else:
+                    # The victim survived -> it will become a wolf
+                    logger.debug("Someone survived a bite!")
                     future_wolves.append(victim)
-                    if self.debug:
-                        print("Someone survived a bite!")
+
+                # Quit if we have no more humans available
                 if len(self.humans) <= 1:
-                    print("All the humans are gone!")
-                    print(f"Day is {self.time}")
+                    logger.info("All the humans are gone!")
+                    logger.info(f"Day is {self.time}")
                     self.report_step()
                     self.terminate_report()
-                    pass
-                pass
-            pass
+
         for puppy in future_wolves:
-            dgi.force_infect(puppy) # Should start incubating
-            self.waiting_wolves.append(puppy) # Copying them to waiting wolves for reporting
-        self.death_queue.append(deaths_today)
+            # Start incubating in DTK
+            dgi.force_infect(puppy.id)
+            self.humans.set_state_for_human(puppy, State.incubating)
 
     def update(self):
+        # Increment the time
         self.time += 1
-        for h in self.humans:
-            dgi.update(h)
-            # Pull people who've changed out of human and into werewolves
-            if dgi.is_infected(h) and not dgi.is_incubating(h):
-                self.humans.remove(h)
-                self.waiting_wolves.remove(h) # See above, they are in two places and need to be removed
-                self.werewolves.append(h)
-                if self.debug:
-                    print(f"Individual {h} is a wolf!")
 
-        if self.time % HALLOWEEN_DAY == 0: # It is october 31
-            if len(self.werewolves) == 0: # and there are no werewolves
-                found_one = False
-                possible_humans = len(self.humans)
-                ages = []
-                min_age_exposure = self.min_age_werewolf_years * DAYS_YEAR
-                while not found_one and possible_humans > 0:
-                    for h in self.humans:
-                        possible_humans -=1
-                        age = dgi.get_age(h)
-                        ages.append(age)
-                        if age > min_age_exposure:
-                            if age % DAYS_YEAR == HALLOWEEN_DAY:
-                                self.humans.remove(h)
-                                self.werewolves.append(h)
-                                found_one = True
-                                break
-                if found_one:
-                    print("Found a new werewolf with a Halloween Birthday.")
-                else:
-                    print("No cool birthdays, just taking someone.")
-                    future_wolf = None
-                    for h in self.humans:
-                        age = dgi.get_age(h)
-                        if not future_wolf and age > min_age_exposure:
-                            self.humans.remove(h)
-                            self.werewolves.append(h)
-                            future_wolf = h
-                    if future_wolf:
-                        print("Found someone old enough.")
-                    else:
-                        print("No one old enough! No outbreak!")
-                        print(ages)
-                        sys.exit()
+        # Update all humans in DTK
+        for h in self.humans:
+            dgi.update(h.id)
+
+            if dgi.is_infected(h.id) and not dgi.is_incubating(h.id):
+                self.humans.set_state_for_human(h, State.infected)
+                logger.debug(f"Individual {h} is a wolf!")
+
+        # If its october 31st and there are no werewolves, turn somebody
+        if self.time % HALLOWEEN_DAY == 0 and self.humans.count_state(State.infected) == 0:
+            self.turn_random_human_in_werewolf()
+
+        # If we enable the reporting -> save the step
         if self.enable_reporting:
             self.report_step()
 
     def report_step(self):
         self.report["timestep"].append(self.time)
-        # TODO: counting humans minus incubating. Not sure what happens if incubating is bitten.
-        self.report["humans"].append(len(self.humans) - len(self.waiting_wolves))
-        self.report["werewolves"].append(len(self.werewolves))
-        self.report["waiting_wolves"].append(len(self.waiting_wolves))
-        self.report["graves"].append(len(self.graves))
+        self.report["humans"].append(self.humans.count_state(State.healthy))
+        self.report["werewolves"].append(self.humans.count_state(State.infected))
+        self.report["waiting_wolves"].append(self.humans.count_state(State.incubating))
+        self.report["graves"].append(self.humans.count_state(State.dead))
+
+    def show_charts(self):
+        import matplotlib.pyplot as plt
+        plt.plot(self.report["humans"])
+        plt.plot(self.report["werewolves"])
+        plt.plot(self.report["waiting_wolves"])
+        plt.plot(self.report["graves"])
+        plt.legend(["Humans", "Werewolves", "Waiting wolves", "Deaths"])
+        plt.show()
 
     def terminate_report(self):
-        with open("werewolf_report.json",'w') as outfile:
-            import json
+        with open("werewolf_report.json", 'w') as outfile:
             json.dump(self.report, outfile, indent=4, sort_keys=True)
+
+        self.show_charts()
         sys.exit()
-
-class DtkPerson(object):
-    def __init__(self, person_id:int):
-        self.id = person_id
-        pass
-
-    def serialize_me(self):
-        my_j = json.loads(dgi.serialize(self.id))
-        self.individual_json = my_j["individual"]
-
-    def get_age(self):
-        self.serialize_me()
-        return self.individual_json["m_age"]
-
-    def is_male(self):
-        self.serialize_me()
-        gender_int = self.individual_json["m_gender"]
-        if gender_int == 1:
-            return True
-        else:
-            return False
-
-    def get_mcw(self):
-        self.serialize_me()
-        return self.individual_json["m_mc_weight"]
-    pass
 
 
 if __name__ == "__main__":
-    demo = WerewolfDemo(debug=False, enable_reporting=True)
-    demo.debug = False
+    demo = WerewolfDemo(enable_reporting=True)
+
+    # Create the population in DTK
     dnd.set_callback(demo.create_person_callback)
     dnd.populate_from_files()
-    if demo.debug:
-        print("Population created\n")
-        men = 0
-        women = 0
-        ages = []
-        for h in demo.humans:
-            alex = DtkPerson(h)
-            if alex.is_male():
-                men += 1
-            else:
-                women += 1
-                pass
-            ages.append(alex.get_age())
-            pass
-        print(f'Total men: {men}\tTotal women: {women}')
-        adam = DtkPerson(demo.humans[0])
-        galactus = DtkPerson(demo.humans[-1])
-        print(f'First human age: {adam.get_age()}\tmale:{adam.is_male()}')
-        print(f'Final human age: {galactus.get_age()}\tmale:{galactus.is_male()}')
-        mean = np.mean(ages)
-        std_dev = np.std(ages)
-        print(f'Average age: {mean}\tStd Dev: {std_dev}')
-        sys.exit(0)
-    for n in range(20*DAYS_YEAR):
+
+    # Debug info
+    logger.debug("Population created\n")
+    logger.debug(f'Total men: {demo.humans.men_count}\tTotal women: {demo.humans.women_count}')
+    logger.debug(f'First human age: {demo.humans[0].formatted_age}\tgender:{demo.humans[0].gender.name}')
+    logger.debug(f'Final human age: {demo.humans[-1].formatted_age}\tgender:{demo.humans[-1].gender.name}')
+    logger.debug(f'Average age: {demo.humans.mean_age}\tStd Dev: {demo.humans.std_age}')
+    print()
+
+    # Run for 20 yeats
+    for n in range(20 * DAYS_YEAR):
+        # Update
         demo.update()
+
+        # Expose
         demo.expose_lycanthrope()
-        if n % 30 == 0:
-            print(f"Humans: {len(demo.humans) - len(demo.waiting_wolves)}\tWerewolves: {len(demo.werewolves)}\tGraveyard: {len(demo.graves)}\tHealing: {len(demo.waiting_wolves)}\n")
-        if n % 365 == 0:
-            print("Happy new year!")
-            foo = input("Ready for next year?")
+
+        # Display a report every month
+        if n != 0 and n % 30 == 0:
+            logger.warning(f"{MONTHS[int(((n - 30) / 30) % 12)]} of year {int(n / 365)}")
+            logger.info(f"Humans: {demo.humans.count_state(State.healthy)}\t"
+                        f"Werewolves: {demo.humans.count_state(State.infected)}\t"
+                        f"Graveyard: {demo.humans.count_state(State.dead)}\t"
+                        f"Healing: {demo.humans.count_state(State.incubating)}\n")
+
+        # Display a message every year
+        if n != 0 and n % 365 == 0:
+            logger.warning("Happy new year!")
+            _ = input("Ready for next year?")
+
+        # Display a message for Halloween
         if n % 365 == HALLOWEEN_DAY:
-            print("Happy Halloween!")
+            logger.warning("Happy Halloween!")
+
     demo.terminate_report()
 
-# DONE: Move to using intrahost: Incubation for 'waiting werewolves'
-# TODO: use infectiousness for hunger
-# DONE: Move to using node demographics to create population
+# Move to using intrahost: Incubation for 'waiting werewolves' and infectiousness for hunger
+# Move to using node demographics to create population
 # Move to / consider moving to using node demographics for fertility / mortality
 # Consider moving to individual properties for hunters- except IPs should not affect model behavior...
 # Consider using diagnostic intervention for 'werewolf test?"

@@ -8,7 +8,9 @@ from enum import Enum
 import dtk_generic_intrahost as dgi
 import numpy as np
 
-MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November",
+          "December"]
+
 
 class bcolors:
     BLUE = '\033[94m'
@@ -68,6 +70,13 @@ class Gender(Enum):
     female = 0
 
 
+class State(Enum):
+    healthy = 0
+    incubating = 1
+    infected = 2
+    dead = 3
+
+
 class DtkPerson:
     def __init__(self, person_id: int):
         self.id = person_id
@@ -75,6 +84,7 @@ class DtkPerson:
         self.gender = Gender(individual_info["m_gender"])
         self.age = individual_info["m_age"]
         self.mcw = individual_info["m_mc_weight"]
+        self.state = State.healthy
 
     @property
     def formatted_age(self):
@@ -88,7 +98,9 @@ class DtkPerson:
 
 
 class Population(list):
-    def humans_older_than(self, age:int):
+    def humans_older_than(self, age: int, state:State = None):
+        if state:
+            return list(filter(lambda human: human.age > age, self.get_humans_with_state(state)))
         return list(filter(lambda human: human.age > age, self))
 
     @property
@@ -106,3 +118,15 @@ class Population(list):
     @property
     def std_age(self):
         return np.std([human.age for human in self])
+
+    def count_state(self, state:State):
+        return sum(human.state == state for human in self)
+
+    def set_state_for_human(self, human:DtkPerson, state:State):
+        human_index = self.index(human)
+        human = self[human_index]
+        human.state = state
+
+    def get_humans_with_state(self, state:State):
+        return list(filter(lambda human: human.state == state, self))
+
