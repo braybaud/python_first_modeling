@@ -126,7 +126,7 @@ class WerewolfDemo:
 
         for puppy in future_wolves:
             # Start incubating in DTK
-            # dgi.force_infect(puppy.id)
+            dgi.force_infect(puppy.id)
             puppy.state = State.incubating
 
     def update(self):
