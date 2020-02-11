@@ -90,7 +90,7 @@ class WerewolfDemo:
             logger.info("Found a new werewolf with a Halloween Birthday.")
         except StopIteration:
             logger.info("No cool birthdays, just taking someone.")
-            future_wolf = next(potential_wolves)
+            future_wolf = potential_wolves[0]
 
         # Remove it from the population and add it to the wolves
         self.humans.remove(future_wolf)
