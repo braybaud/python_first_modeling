@@ -6,7 +6,7 @@ import sys
 import dtk_generic_intrahost as dgi
 import dtk_nodedemog as dnd
 
-from werewolves.utils import DtkPerson, load_constants, logger, MONTHS, Population, State
+from utils import DtkPerson, load_constants, logger, MONTHS, Population, State
 
 # Load the constants
 DAYS_YEAR, HALLOWEEN_DAY, LUNAR_CYCLE, FULL_MOON_NIGHTS, MIN_WEREWOLF_SPAWN = load_constants()
