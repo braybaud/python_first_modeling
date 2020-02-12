@@ -71,6 +71,10 @@ class WerewolfDemo:
         self.humans.append(DtkPerson(dgi.create((gender, age, mcw))))
 
     def turn_random_human_in_werewolf(self):
+        """
+        Turn a random human into a werewolf.
+        The human needs to be old enough, and preferably born on halloween day,
+        """
         # Make sure we select only old enough humans
         min_age_exposure = self.min_age_werewolf_years * DAYS_YEAR
         potential_wolves = self.humans.humans_older_than(min_age_exposure)
